@@ -1,5 +1,6 @@
 """
 PDF Generation Service using ReportLab
+Supports overlaying data on existing PDF templates
 """
 
 from reportlab.pdfgen import canvas
@@ -7,28 +8,44 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.utils import ImageReader
 from io import BytesIO
+from PyPDF2 import PdfReader, PdfWriter
+import os
 
 
 class PDFService:
     """
     Service for generating PDFs from templates
+    Supports overlay mode to use original PDF as background
     """
     
     def __init__(self):
         """Initialize PDF service"""
-        pass
+        self.template_cache = {}
     
-    def generate_pdf(self, template, data):
+    def generate_pdf(self, template, data, background_pdf_path=None):
         """
         Generate PDF from template and data
         
         Args:
             template: Template object with fields
             data: Dict of field values
+            background_pdf_path: Optional path to PDF to use as background
             
         Returns:
             bytes: PDF file as bytes
+        """
+        # If background PDF provided, use overlay mode
+        if background_pdf_path and os.path.exists(background_pdf_path):
+            return self._generate_pdf_with_overlay(template, data, background_pdf_path)
+        
+        # Otherwise, generate simple PDF
+        return self._generate_simple_pdf(template, data)
+    
+    def _generate_simple_pdf(self, template, data):
+        """
+        Generate simple PDF (original behavior)
         """
         # Create BytesIO buffer
         buffer = BytesIO()
@@ -61,9 +78,63 @@ class PDFService:
         buffer.seek(0)
         return buffer.getvalue()
     
-    def _draw_field(self, c, field, data, page_height):
+    def _generate_pdf_with_overlay(self, template, data, background_pdf_path):
+        """
+        Generate PDF by overlaying data on existing PDF template
+        
+        This preserves the original PDF's design, images, and layout
+        """
+        try:
+            # Create overlay with data
+            overlay_buffer = BytesIO()
+            
+            # Get page size
+            page_width = template.pageWidth if hasattr(template, 'pageWidth') else 612
+            page_height = template.pageHeight if hasattr(template, 'pageHeight') else 792
+            
+            # Create canvas for overlay (transparent background)
+            c = canvas.Canvas(overlay_buffer, pagesize=(page_width, page_height))
+            
+            # Draw only the data fields (no headers, transparent background)
+            for field in template.fields:
+                self._draw_field(c, field, data, page_height, overlay_mode=True)
+            
+            c.save()
+            overlay_buffer.seek(0)
+            
+            # Read background PDF
+            background_pdf = PdfReader(background_pdf_path)
+            background_page = background_pdf.pages[0]
+            
+            # Read overlay PDF
+            overlay_pdf = PdfReader(overlay_buffer)
+            overlay_page = overlay_pdf.pages[0]
+            
+            # Merge: background + overlay
+            background_page.merge_page(overlay_page)
+            
+            # Write result
+            output = PdfWriter()
+            output.add_page(background_page)
+            
+            # Get bytes
+            result_buffer = BytesIO()
+            output.write(result_buffer)
+            result_buffer.seek(0)
+            
+            return result_buffer.getvalue()
+            
+        except Exception as e:
+            print(f"Error in overlay mode: {e}")
+            print("Falling back to simple PDF generation")
+            return self._generate_simple_pdf(template, data)
+    
+    def _draw_field(self, c, field, data, page_height, overlay_mode=False):
         """
         Draw a single field on the PDF
+        
+        Args:
+            overlay_mode: If True, skip drawing boxes/backgrounds (for transparent overlay)
         """
         # Get field properties
         field_name = field.name
@@ -82,20 +153,25 @@ class PDFService:
         
         # Handle table type
         if field_type == 'table':
-            self._draw_table(c, field, data, page_height)
+            self._draw_table(c, field, data, page_height, overlay_mode)
             return
         
         # Handle different field types
         if field_type == 'label':
+            # In overlay mode, skip static labels (they're on the background)
+            if overlay_mode:
+                return
             # Static label - just draw the text
             c.setFont(font_name, font_size)
             c.drawString(x, y + (height / 2) - (font_size / 3), field_label)
             
         elif field_type == 'checkbox':
-            # Draw checkbox box
-            c.setStrokeColorRGB(0.2, 0.4, 0.8)
-            c.setLineWidth(1.5)
-            c.rect(x, y, width, height)
+            # In overlay mode, only draw if checked
+            if not overlay_mode:
+                # Draw checkbox box
+                c.setStrokeColorRGB(0.2, 0.4, 0.8)
+                c.setLineWidth(1.5)
+                c.rect(x, y, width, height)
             
             # Check if checked
             value = data.get(field_name, '')
@@ -107,23 +183,25 @@ class PDFService:
                 c.line(x + 2, y + 2, x + width - 2, y + height - 2)
                 c.line(x + width - 2, y + 2, x + 2, y + height - 2)
             
-            # Draw label next to checkbox
-            c.setFont("Helvetica", 10)
-            c.setFillColorRGB(0, 0, 0)
-            c.drawString(x + width + 5, y + (height / 2) - 3, field_label)
+            if not overlay_mode:
+                # Draw label next to checkbox
+                c.setFont("Helvetica", 10)
+                c.setFillColorRGB(0, 0, 0)
+                c.drawString(x + width + 5, y + (height / 2) - 3, field_label)
             
         else:
             # Text, number, date fields
-            # Draw field box
-            c.setStrokeColorRGB(0.2, 0.4, 0.8)
-            c.setLineWidth(1)
-            c.setFillColorRGB(0.9, 0.95, 1.0)
-            c.rect(x, y, width, height, fill=1)
-            
-            # Draw label above field
-            c.setFont("Helvetica", 8)
-            c.setFillColorRGB(0.4, 0.4, 0.4)
-            c.drawString(x, y + height + 3, field_label + ":")
+            if not overlay_mode:
+                # Draw field box
+                c.setStrokeColorRGB(0.2, 0.4, 0.8)
+                c.setLineWidth(1)
+                c.setFillColorRGB(0.9, 0.95, 1.0)
+                c.rect(x, y, width, height, fill=1)
+                
+                # Draw label above field
+                c.setFont("Helvetica", 8)
+                c.setFillColorRGB(0.4, 0.4, 0.4)
+                c.drawString(x, y + height + 3, field_label + ":")
             
             # Draw value inside field
             value = data.get(field_name, '')
@@ -143,9 +221,12 @@ class PDFService:
         c.setStrokeColorRGB(0, 0, 0)
         c.setFillColorRGB(0, 0, 0)
     
-    def _draw_table(self, c, field, data, page_height):
+    def _draw_table(self, c, field, data, page_height, overlay_mode=False):
         """
         Draw a table on the PDF
+        
+        Args:
+            overlay_mode: If True, skip drawing table grid (for transparent overlay)
         """
         # Get table properties
         x = field.x
