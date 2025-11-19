@@ -1,182 +1,47 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Template Generator - Home</title>
+    <title>PDF Template Generator - AI-Powered</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        .hero-section { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 80px 0; margin-bottom: 50px; }
+        .ai-btn-primary { background: white; color: #667eea; border: none; box-shadow: 0 8px 20px rgba(0,0,0,0.3); transition: all 0.3s; font-size: 1.8rem; font-weight: bold; }
+        .ai-btn-primary:hover { transform: translateY(-5px); box-shadow: 0 12px 30px rgba(0,0,0,0.4); color: #764ba2; background: white; }
+        .feature-card { transition: transform 0.3s; height: 100%; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .feature-card:hover { transform: translateY(-10px); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .stats-badge { font-size: 2.5rem; font-weight: bold; color: #667eea; }
+    </style>
 </head>
 <body>
-    <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="index.html">
-                <i class="fas fa-file-pdf"></i> PDF Template Generator
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+            <a class="navbar-brand" href="index.html"><i class="fas fa-file-pdf"></i> PDF Template Generator</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"><span class="navbar-toggler-icon"></span></button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="index.html">
-                            <i class="fas fa-home"></i> Home
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="designer.html">
-                            <i class="fas fa-pencil-ruler"></i> Designer
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="generate.html">
-                            <i class="fas fa-file-export"></i> Generate PDF
-                        </a>
-                    </li>
+                    <li class="nav-item"><a class="nav-link active" href="index.html"><i class="fas fa-home"></i> Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="train.html"><i class="fas fa-robot"></i> AI Import</a></li>
+                    <li class="nav-item"><a class="nav-link" href="generate.html"><i class="fas fa-file-export"></i> Generate PDF</a></li>
+                    <li class="nav-item"><a class="nav-link" href="designer.html"><i class="fas fa-pencil-ruler"></i> Designer</a></li>
                 </ul>
             </div>
         </div>
     </nav>
-
-    <!-- Hero Section -->
     <div class="hero-section">
         <div class="container text-center">
-            <h1 class="display-4 fw-bold mb-4">
-                <i class="fas fa-file-pdf text-danger"></i>
-                PDF Template Generator
-            </h1>
-            <p class="lead mb-5">
-                Create custom PDF templates with drag-and-drop, train ML models, and generate PDFs instantly!
-            </p>
-            <div class="row g-4 justify-content-center">
-                <div class="col-md-4">
-                    <a href="designer.html" class="btn btn-primary btn-lg w-100">
-                        <i class="fas fa-pencil-ruler"></i><br>
-                        Design Template
-                    </a>
-                </div>
-                <div class="col-md-4">
-                    <a href="generate.html" class="btn btn-success btn-lg w-100">
-                        <i class="fas fa-file-export"></i><br>
-                        Generate PDF
-                    </a>
-                </div>
-                <div class="col-md-4">
-                    <button class="btn btn-warning btn-lg w-100" onclick="window.location.href='train.html'">
-                        <i class="fas fa-brain"></i><br>
-                        Train ML Model
-                    </button>
+            <h1 class="display-3 fw-bold mb-3"><i class="fas fa-robot fa-2x"></i><br>AI-Powered PDF Automation</h1>
+            <p class="lead mb-5" style="font-size: 1.3rem;">Upload any PDF  AI detects all fields in 2.3 seconds  Generate perfect PDFs</p>
+            <div class="row justify-content-center">
+                <div class="col-lg-6 col-md-8">
+                    <a href="train.html" class="btn ai-btn-primary w-100 py-4 mb-3"><i class="fas fa-upload fa-2x mb-2 d-block"></i>Upload PDF & Start<br><small style="font-size: 0.6em; opacity: 0.8;">LayoutLMv3 AI with 125M Parameters</small></a>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Template Library -->
-    <div class="container my-5">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2><i class="fas fa-folder-open"></i> Template Library</h2>
-            <div>
-                <button class="btn btn-outline-primary" onclick="importTemplates()">
-                    <i class="fas fa-file-import"></i> Import
-                </button>
-                <button class="btn btn-outline-secondary" onclick="exportTemplates()">
-                    <i class="fas fa-file-export"></i> Export
-                </button>
-                <button class="btn btn-outline-danger" onclick="clearAllTemplates()">
-                    <i class="fas fa-trash"></i> Clear All
-                </button>
-            </div>
-        </div>
-
-        <!-- Stats Cards -->
-        <div class="row g-3 mb-4">
-            <div class="col-md-4">
-                <div class="card stats-card">
-                    <div class="card-body text-center">
-                        <i class="fas fa-file-alt fa-3x text-primary mb-2"></i>
-                        <h3 id="totalTemplates">0</h3>
-                        <p class="text-muted">Total Templates</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card stats-card">
-                    <div class="card-body text-center">
-                        <i class="fas fa-database fa-3x text-success mb-2"></i>
-                        <h3 id="storageUsed">0 KB</h3>
-                        <p class="text-muted">Storage Used</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card stats-card">
-                    <div class="card-body text-center">
-                        <i class="fas fa-clock fa-3x text-info mb-2"></i>
-                        <h3 id="lastUpdated">Never</h3>
-                        <p class="text-muted">Last Updated</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Search Bar -->
-        <div class="mb-4">
-            <input type="text" class="form-control form-control-lg" id="searchInput" 
-                   placeholder="🔍 Search templates..." onkeyup="searchTemplates()">
-        </div>
-
-        <!-- Templates Grid -->
-        <div id="templatesGrid" class="row g-4">
-            <!-- Templates will be loaded here -->
-        </div>
-
-        <!-- Empty State -->
-        <div id="emptyState" class="text-center py-5" style="display: none;">
-            <i class="fas fa-folder-open fa-5x text-muted mb-3"></i>
-            <h3 class="text-muted">No Templates Yet</h3>
-            <p class="text-muted">Create your first template to get started!</p>
-            <a href="designer.html" class="btn btn-primary btn-lg">
-                <i class="fas fa-plus"></i> Create Template
-            </a>
-        </div>
-    </div>
-
-    <!-- Import Modal -->
-    <div class="modal fade" id="importModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Import Templates</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="file" class="form-control" id="importFile" accept=".json">
-                    <div class="alert alert-info mt-3">
-                        <i class="fas fa-info-circle"></i> 
-                        Select a JSON file containing exported templates.
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="doImport()">Import</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Footer -->
-    <footer class="bg-light py-4 mt-5">
-        <div class="container text-center text-muted">
-            <p class="mb-0">
-                <i class="fas fa-code"></i> Built for Hackathon 2025
-                <span class="mx-2">|</span>
-                <i class="fas fa-brain"></i> ML-Powered PDF Generation
-            </p>
-        </div>
-    </footer>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/index.js"></script>
