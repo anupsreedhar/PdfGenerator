@@ -1,10 +1,10 @@
 {
-  "trained_at": "2025-11-10T13:11:58.766269",
-  "template_count": 10,
+  "trained_at": "2025-11-20T18:20:32.877791",
+  "template_count": 28,
   "epochs": 50,
   "batch_size": 16,
-  "training_time": "6.87s",
-  "final_loss": 0.014935577288269997,
-  "final_val_loss": 0.025100592523813248,
-  "accuracy": "98.51%"
+  "training_time": "7.05s",
+  "final_loss": 0.20067615807056427,
+  "final_val_loss": 0.2521127760410309,
+  "accuracy": "79.93%"
 }
