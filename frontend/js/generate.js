@@ -244,7 +244,8 @@ function collectFormData() {
             
             if (input) {
                 if (field.type === 'checkbox') {
-                    data[field.name] = input.checked ? 'Yes' : 'No';
+                    // Only send 'Yes' if checked, empty string if not
+                    data[field.name] = input.checked ? 'Yes' : '';
                 } else {
                     data[field.name] = input.value;
                 }
