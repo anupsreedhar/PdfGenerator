@@ -150,13 +150,32 @@ class PDFParser:
                     # Create a field for this label
                     clean_name = field_name.lower().replace(' ', '_')
                     
-                    # Determine field type based on label
+                    # Determine field type based on label (ENHANCED)
                     field_type = 'text'
-                    if any(keyword in field_name.lower() for keyword in ['date', 'birth', 'dob']):
+                    field_name_lower = field_name.lower()
+                    
+                    # Enhanced date detection
+                    date_keywords = [
+                        'date', 'birth', 'dob', 'expiry', 'expires', 'expiration',
+                        'valid', 'issued', 'created', 'modified', 'effective',
+                        'mm/dd/yyyy', 'dd/mm/yyyy', 'yyyy-mm-dd', 'mm-dd-yyyy',
+                        'year', 'month', 'day', 'anniversary', 'deadline'
+                    ]
+                    if any(keyword in field_name_lower for keyword in date_keywords):
                         field_type = 'date'
-                    elif any(keyword in field_name.lower() for keyword in ['amount', 'total', 'price', 'quantity']):
+                    
+                    # Enhanced number detection
+                    elif any(keyword in field_name_lower for keyword in 
+                            ['amount', 'total', 'price', 'quantity', 'number', 
+                             'count', 'sum', 'cost', 'fee', 'charge', 'balance',
+                             'qty', 'no.', 'num', '#']):
                         field_type = 'number'
-                    elif any(keyword in field_name.lower() for keyword in ['check', 'agree', 'confirm']):
+                    
+                    # Enhanced checkbox detection
+                    elif any(keyword in field_name_lower for keyword in 
+                            ['check', 'agree', 'confirm', 'accept', 'consent',
+                             'yes/no', 'y/n', 'tick', 'select', 'choose',
+                             'acknowledge', 'verified', 'approved']):
                         field_type = 'checkbox'
                     
                     fields.append({

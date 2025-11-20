@@ -95,6 +95,9 @@ class PDFService:
             print(f"🎨 Overlay Mode: Using background PDF: {background_pdf_path}")
             print(f"📝 Overlaying {len(template.fields)} fields")
             print(f"📊 Data keys: {list(data.keys())}")
+            print(f"📊 Data values sample:")
+            for key, value in list(data.items())[:10]:  # Show first 10
+                print(f"   {key}: '{value}' (type: {type(value).__name__})")
             
             # Create overlay with data
             overlay_buffer = BytesIO()
@@ -123,6 +126,13 @@ class PDFService:
             # Read background PDF
             background_pdf = PdfReader(background_pdf_path)
             background_page = background_pdf.pages[0]
+            
+            # CRITICAL FIX: Remove form field annotations from background
+            # Form fields render ON TOP of overlay content, hiding our checkmarks
+            if '/Annots' in background_page:
+                annot_count = len(background_page['/Annots'].get_object() if hasattr(background_page['/Annots'], 'get_object') else background_page['/Annots'])
+                del background_page['/Annots']
+                print(f"🗑️  Removed {annot_count} form field annotations from background (prevents overlay conflicts)")
             
             # Read overlay PDF
             overlay_pdf = PdfReader(overlay_buffer)
@@ -184,22 +194,67 @@ class PDFService:
             c.drawString(x, y + (height / 2) - (font_size / 3), field_label)
             
         elif field_type == 'checkbox':
-            # In overlay mode, only draw if checked
+            # Check if checked
+            value = data.get(field_name, '')
+            is_checked = False
+            if value:
+                value_str = str(value).lower().strip()
+                is_checked = value_str in ['true', 'yes', '1', 'checked', 'on', 'x']
+            
+            # Debug logging
+            print(f"🔲 Checkbox '{field_name}': value='{value}', is_checked={is_checked}, overlay={overlay_mode}, pos=({x},{y}), size={width}x{height}")
+            
             if not overlay_mode:
-                # Draw checkbox box
+                # Draw checkbox box (only in non-overlay mode)
                 c.setStrokeColorRGB(0.2, 0.4, 0.8)
                 c.setLineWidth(1.5)
                 c.rect(x, y, width, height)
             
-            # Check if checked
-            value = data.get(field_name, '')
-            if value and str(value).lower() in ['true', 'yes', '1', 'checked']:
-                # Draw checkmark
-                c.setStrokeColorRGB(0, 0.5, 0)
-                c.setLineWidth(2)
-                # Draw X
-                c.line(x + 2, y + 2, x + width - 2, y + height - 2)
-                c.line(x + width - 2, y + 2, x + 2, y + height - 2)
+            if is_checked:
+                # SOLUTION: Draw MULTIPLE visible indicators for maximum visibility
+                
+                # Set opacity to ensure visibility over background
+                c.saveState()  # Save current graphics state
+                
+                # METHOD 1: Filled black square (most visible)
+                c.setFillColorRGB(0, 0, 0)  # Pure black
+                c.setStrokeColorRGB(0, 0, 0)
+                c.setFillAlpha(1.0)  # Fully opaque
+                c.setStrokeAlpha(1.0)
+                
+                # Draw a filled rectangle that's slightly smaller than the checkbox
+                inner_padding = 2
+                c.rect(
+                    x + inner_padding, 
+                    y + inner_padding, 
+                    width - 2*inner_padding, 
+                    height - 2*inner_padding, 
+                    fill=1, 
+                    stroke=0
+                )
+                
+                # METHOD 2: Also draw checkmark for clarity
+                c.setLineWidth(max(3, min(width, height) // 5))  # Scale line width with checkbox size
+                
+                # Checkmark geometry (larger)
+                padding = 0.1
+                check_x1 = x + width * (padding + 0.1)
+                check_y1 = y + height * 0.5
+                check_x2 = x + width * 0.45
+                check_y2 = y + height * (padding + 0.1)
+                check_x3 = x + width * (1 - padding - 0.05)
+                check_y3 = y + height * (1 - padding - 0.05)
+                
+                # Draw white checkmark on black background
+                c.setStrokeColorRGB(1, 1, 1)  # White checkmark
+                c.line(check_x1, check_y1, check_x2, check_y2)
+                c.line(check_x2, check_y2, check_x3, check_y3)
+                
+                c.restoreState()  # Restore graphics state
+                
+                print(f"   ✓ Drew FILLED checkbox + checkmark at ({x:.1f}, {y:.1f}) - {width}x{height}")
+            else:
+                print(f"   ☐ Checkbox not checked, skipping")
             
             if not overlay_mode:
                 # Draw label next to checkbox
