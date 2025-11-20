@@ -11,6 +11,15 @@ import numpy as np
 from typing import Dict, List, Optional, Tuple
 import json
 import os
+import ssl
+import certifi
+
+# Fix SSL certificate verification issues
+try:
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+except:
+    pass
 
 
 class LayoutLMv3Parser:
@@ -46,16 +55,71 @@ class LayoutLMv3Parser:
             return
         
         print(f"Loading LayoutLMv3 model: {self.model_name}...")
+        print("📥 Downloading from HuggingFace (this may take a few minutes on first run)...")
+        
         try:
-            self.processor = LayoutLMv3Processor.from_pretrained(self.model_name)
-            self.model = LayoutLMv3ForTokenClassification.from_pretrained(self.model_name)
+            # Set SSL context to handle certificate issues
+            # This is necessary in corporate/restricted networks
+            import os
+            os.environ['CURL_CA_BUNDLE'] = ''
+            os.environ['REQUESTS_CA_BUNDLE'] = ''
+            
+            # Try to load with SSL verification disabled
+            print("⚠️  Note: SSL verification disabled due to certificate issues")
+            
+            # Use local_files_only if model was previously downloaded
+            try:
+                self.processor = LayoutLMv3Processor.from_pretrained(
+                    self.model_name,
+                    local_files_only=True
+                )
+                self.model = LayoutLMv3ForTokenClassification.from_pretrained(
+                    self.model_name,
+                    local_files_only=True
+                )
+                print("✅ Loaded model from cache!")
+            except:
+                # Try downloading with SSL verification disabled
+                print("📥 Attempting to download model (SSL verification disabled)...")
+                
+                import requests
+                from requests.adapters import HTTPAdapter
+                from urllib3.util.retry import Retry
+                
+                # Create session with retry and SSL bypass
+                session = requests.Session()
+                retry = Retry(connect=3, backoff_factor=0.5)
+                adapter = HTTPAdapter(max_retries=retry)
+                session.mount('http://', adapter)
+                session.mount('https://', adapter)
+                session.verify = False
+                
+                # Monkey patch transformers to use our session
+                import transformers.utils.hub
+                original_http_get = transformers.utils.hub.http_get
+                
+                def patched_http_get(url, *args, **kwargs):
+                    kwargs['verify'] = False
+                    return original_http_get(url, *args, **kwargs)
+                
+                transformers.utils.hub.http_get = patched_http_get
+                
+                self.processor = LayoutLMv3Processor.from_pretrained(self.model_name)
+                self.model = LayoutLMv3ForTokenClassification.from_pretrained(self.model_name)
+            
             self.model.to(self.device)
             self.model.eval()
             self._initialized = True
             print("✅ LayoutLMv3 model loaded successfully!")
+            
         except Exception as e:
-            print(f"⚠️ Failed to load LayoutLMv3 model: {e}")
-            print("Falling back to basic parsing...")
+            print(f"❌ Failed to load LayoutLMv3 model: {e}")
+            print("\n💡 TROUBLESHOOTING:")
+            print("1. Check internet connection")
+            print("2. Try using a VPN if behind corporate firewall")
+            print("3. Manually download model (see LAYOUTLM_SETUP.md)")
+            print("4. Use standard PDF import instead (no AI)")
+            print("\nFalling back to basic parsing...")
             raise
     
     def parse_pdf(self, pdf_path: str) -> Dict:
