@@ -58,11 +58,26 @@ async function startTraining() {
     const batchSize = parseInt(document.getElementById('batchSize').value);
     const generateSamples = document.getElementById('generateSamples').checked;
     
-    // Hide form, show progress
-    document.getElementById('trainingForm').style.display = 'none';
-    document.getElementById('trainingProgress').style.display = 'block';
-    document.getElementById('trainingError').style.display = 'none';
-    document.getElementById('trainingComplete').style.display = 'none';
+    // Hide form elements, show progress
+    const epochsInput = document.getElementById('epochs');
+    const batchSizeInput = document.getElementById('batchSize');
+    const generateSamplesInput = document.getElementById('generateSamples');
+    const startButton = event ? event.target : document.querySelector('button[onclick="startTraining()"]');
+    
+    // Hide form controls
+    if (epochsInput) epochsInput.closest('.mb-3').style.display = 'none';
+    if (batchSizeInput) batchSizeInput.closest('.mb-3').style.display = 'none';
+    if (generateSamplesInput) generateSamplesInput.closest('.form-check').style.display = 'none';
+    if (startButton) startButton.style.display = 'none';
+    
+    // Show/hide sections
+    const progressSection = document.getElementById('trainingProgress');
+    const errorSection = document.getElementById('trainingError');
+    const completeSection = document.getElementById('trainingComplete');
+    
+    if (progressSection) progressSection.style.display = 'block';
+    if (errorSection) errorSection.style.display = 'none';
+    if (completeSection) completeSection.style.display = 'none';
     
     // Clear log
     document.getElementById('trainingLog').innerHTML = '';
