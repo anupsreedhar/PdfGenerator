@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Generate - ML-Powered PDF Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .template-card {
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            height: 100%;
+        }
+        
+        .template-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            border-color: #0d6efd;
+        }
+        
+        .template-card.selected {
+            border-color: #198754;
+            background: linear-gradient(135deg, rgba(25, 135, 84, 0.1), rgba(13, 202, 240, 0.1));
+        }
+        
+        .template-icon {
+            font-size: 3rem;
+            color: #0d6efd;
+        }
+        
+        .field-input-group {
+            margin-bottom: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #0d6efd;
+        }
+        
+        .smart-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+        
+        #fieldInputsSection {
+            display: none;
+        }
+        
+        #fieldInputsSection.show {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .loading-overlay.show {
+            display: flex;
+        }
+        
+        .loading-content {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html">
+                <i class="bi bi-file-earmark-pdf-fill"></i> PDF Generator
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="designer.html">Designer</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="generate.html">Generate</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="smart-generate.html">
+                            Smart Generate <span class="smart-badge">AI</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="train.html">Train Model</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="ml-tools.html">ML Tools</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner-border text-primary mb-3" style="width: 4rem; height: 4rem;" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <h4>🤖 Generating PDF with AI...</h4>
+            <p class="text-muted">The trained model is creating your document</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="text-center mb-5">
+            <h1 class="display-4">
+                <i class="bi bi-lightning-charge-fill text-warning"></i>
+                Smart Generate
+            </h1>
+            <p class="lead text-muted">AI-Powered PDF Generation - Just pick a template and fill the data!</p>
+            <div class="alert alert-info d-inline-block">
+                <i class="bi bi-robot me-2"></i>
+                The ML model learns all your templates and generates PDFs intelligently
+            </div>
+        </div>
+
+        <!-- Step 1: Select Template -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="bi bi-1-circle me-2"></i>Step 1: Select Template
+                </h4>
+            </div>
+            <div class="card-body">
+                <div id="templatesLoading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading templates from trained model...</p>
+                </div>
+                
+                <div id="noTemplates" class="alert alert-warning" style="display: none;">
+                    <h5><i class="bi bi-exclamation-triangle me-2"></i>No Templates Found</h5>
+                    <p>Please train the ML model first or create templates in the Designer.</p>
+                    <a href="train.html" class="btn btn-warning">
+                        <i class="bi bi-mortarboard me-2"></i>Train Model
+                    </a>
+                    <a href="designer.html" class="btn btn-primary ms-2">
+                        <i class="bi bi-pencil-square me-2"></i>Create Template
+                    </a>
+                </div>
+                
+                <div id="templatesGrid" class="row g-3"></div>
+            </div>
+        </div>
+
+        <!-- Step 2: Fill Data -->
+        <div id="fieldInputsSection" class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0">
+                    <i class="bi bi-2-circle me-2"></i>Step 2: Fill Template Data
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Fill in the fields below. The AI will auto-fill any missing fields with intelligent defaults.
+                </div>
+                
+                <div id="fieldInputs" class="row"></div>
+                
+                <div class="text-center mt-4">
+                    <button id="generateBtn" class="btn btn-success btn-lg">
+                        <i class="bi bi-lightning-charge-fill me-2"></i>
+                        Generate PDF with AI
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Section -->
+        <div class="card border-info mb-4">
+            <div class="card-body">
+                <h5><i class="bi bi-lightbulb text-warning me-2"></i>How Smart Generate Works</h5>
+                <ul class="mb-0">
+                    <li><strong>Template Selection:</strong> Choose from templates the ML model has learned</li>
+                    <li><strong>Intelligent Defaults:</strong> Missing fields are auto-filled with smart defaults (dates, checkboxes, numbers)</li>
+                    <li><strong>Fast Generation:</strong> The trained model knows your template structure for quick PDF creation</li>
+                    <li><strong>Background Preservation:</strong> Original template backgrounds are automatically used if available</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="js/smart-generate.js"></script>
+</body>
+</html>

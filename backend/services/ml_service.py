@@ -19,11 +19,14 @@ class MLService:
     def __init__(self):
         """Initialize ML service"""
         self.model = None
-        self.model_dir = "ml_models"
-        self.training_tasks = {}
         
-        # Create model directory
-        os.makedirs(self.model_dir, exist_ok=True)
+        # Import config to get models directory
+        import sys
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+        from config import Config
+        
+        self.model_dir = Config.get_models_dir()
+        self.training_tasks = {}
         
         # Try to load existing model
         self._try_load_model()

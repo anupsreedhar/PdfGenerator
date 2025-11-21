@@ -3,17 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Template Designer - PDF Template Generator</title>
+    <title>Template Designer - PDF Generator AI</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
         <div class="container-fluid">
-            <a class="navbar-brand" href="index.html">
-                <i class="fas fa-file-pdf"></i> PDF Template Generator
+            <a class="navbar-brand d-flex align-items-center" href="index.html">
+                <div class="brand-icon">
+                    <i class="fas fa-file-pdf"></i>
+                </div>
+                <span class="ms-2">PDF Generator AI</span>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -22,17 +25,22 @@
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
                         <a class="nav-link" href="index.html">
-                            <i class="fas fa-home"></i> Home
+                            <i class="fas fa-home me-1"></i> Home
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link active" href="designer.html">
-                            <i class="fas fa-pencil-ruler"></i> Designer
+                        <a class="nav-link" href="train.html">
+                            <i class="fas fa-robot me-1"></i> AI Import
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="generate.html">
-                            <i class="fas fa-file-export"></i> Generate PDF
+                            <i class="fas fa-file-export me-1"></i> Generate
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="designer.html">
+                            <i class="fas fa-pencil-ruler me-1"></i> Designer
                         </a>
                     </li>
                 </ul>
@@ -41,94 +49,106 @@
     </nav>
 
     <!-- Designer Interface -->
-    <div class="container-fluid mt-3">
-        <div class="row">
+    <div class="container-fluid" style="height: calc(100vh - 70px);">
+        <div class="row h-100">
             <!-- Left Sidebar - Tools -->
-            <div class="col-md-2 bg-light p-3">
-                <h5><i class="fas fa-tools"></i> Tools</h5>
+            <div class="col-md-2 bg-light p-3 border-end h-100 overflow-auto">
+                <h5 class="fw-bold mb-4">
+                    <i class="fas fa-toolbox text-primary me-2"></i>Tools
+                </h5>
                 
                 <!-- Template Info -->
-                <div class="mb-3">
-                    <label class="form-label">Template Name</label>
+                <div class="mb-4">
+                    <label class="form-label fw-bold small">Template Name</label>
                     <input type="text" class="form-control" id="templateName" placeholder="My Template">
                 </div>
 
                 <hr>
 
                 <!-- Field Types -->
-                <h6>Add Fields</h6>
-                <div class="d-grid gap-2">
-                    <button class="btn btn-outline-primary btn-sm" onclick="addField('text')">
-                        <i class="fas fa-font"></i> Text Field
+                <h6 class="fw-bold mb-3">
+                    <i class="fas fa-plus-circle me-1"></i>Add Fields
+                </h6>
+                <div class="d-grid gap-2 mb-4">
+                    <button class="btn btn-sm btn-outline-primary" onclick="addField('text')">
+                        <i class="fas fa-font me-2"></i>Text Field
                     </button>
-                    <button class="btn btn-outline-success btn-sm" onclick="addField('number')">
-                        <i class="fas fa-hashtag"></i> Number
+                    <button class="btn btn-sm btn-outline-success" onclick="addField('number')">
+                        <i class="fas fa-hashtag me-2"></i>Number
                     </button>
-                    <button class="btn btn-outline-info btn-sm" onclick="addField('date')">
-                        <i class="fas fa-calendar"></i> Date
+                    <button class="btn btn-sm btn-outline-info" onclick="addField('date')">
+                        <i class="fas fa-calendar me-2"></i>Date
                     </button>
-                    <button class="btn btn-outline-warning btn-sm" onclick="addField('checkbox')">
-                        <i class="fas fa-check-square"></i> Checkbox
+                    <button class="btn btn-sm btn-outline-warning" onclick="addField('checkbox')">
+                        <i class="fas fa-check-square me-2"></i>Checkbox
                     </button>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="addField('label')">
-                        <i class="fas fa-tag"></i> Label
+                    <button class="btn btn-sm btn-outline-secondary" onclick="addField('label')">
+                        <i class="fas fa-tag me-2"></i>Label
                     </button>
-                    <button class="btn btn-outline-dark btn-sm" onclick="showTableModal()">
-                        <i class="fas fa-table"></i> Table
+                    <button class="btn btn-sm btn-outline-dark" onclick="showTableModal()">
+                        <i class="fas fa-table me-2"></i>Table
                     </button>
                 </div>
 
                 <hr>
 
                 <!-- Canvas Controls -->
-                <h6>Canvas</h6>
-                <div class="d-grid gap-2">
-                    <button class="btn btn-outline-danger btn-sm" onclick="deleteSelected()">
-                        <i class="fas fa-trash"></i> Delete Selected
+                <h6 class="fw-bold mb-3">
+                    <i class="fas fa-cog me-1"></i>Canvas
+                </h6>
+                <div class="d-grid gap-2 mb-4">
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteSelected()">
+                        <i class="fas fa-trash me-2"></i>Delete Selected
                     </button>
-                    <button class="btn btn-outline-warning btn-sm" onclick="clearCanvas()">
-                        <i class="fas fa-eraser"></i> Clear All
+                    <button class="btn btn-sm btn-outline-warning" onclick="clearCanvas()">
+                        <i class="fas fa-eraser me-2"></i>Clear All
                     </button>
                 </div>
 
                 <hr>
 
                 <!-- Actions -->
-                <h6>Actions</h6>
+                <h6 class="fw-bold mb-3">
+                    <i class="fas fa-bolt me-1"></i>Actions
+                </h6>
                 <div class="d-grid gap-2">
                     <button class="btn btn-success" onclick="saveTemplate()">
-                        <i class="fas fa-save"></i> Save Template
+                        <i class="fas fa-save me-2"></i>Save Template
                     </button>
                     <button class="btn btn-primary" onclick="loadTemplate()">
-                        <i class="fas fa-folder-open"></i> Load Template
+                        <i class="fas fa-folder-open me-2"></i>Load Template
                     </button>
                     <button class="btn btn-danger" onclick="document.getElementById('pdfFileInput').click()">
-                        <i class="fas fa-file-pdf"></i> Import PDF
+                        <i class="fas fa-file-pdf me-2"></i>Import PDF
                     </button>
                     <input type="file" id="pdfFileInput" accept=".pdf" style="display: none;" onchange="importPDFTemplate()">
                     <button class="btn btn-info" onclick="previewTemplate()">
-                        <i class="fas fa-eye"></i> Preview JSON
+                        <i class="fas fa-eye me-2"></i>Preview JSON
                     </button>
                     <button class="btn btn-warning" onclick="exportTemplateJSON()">
-                        <i class="fas fa-download"></i> Export JSON
+                        <i class="fas fa-download me-2"></i>Export JSON
                     </button>
                 </div>
             </div>
 
             <!-- Main Canvas Area -->
-            <div class="col-md-8">
-                <div class="canvas-container">
-                    <div class="canvas-toolbar bg-light p-2 mb-2 rounded">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <span class="badge bg-secondary">Page Size: Letter (8.5" × 11")</span>
-                                <span class="badge bg-info ms-2" id="fieldCount">Fields: 0</span>
+            <div class="col-md-8 p-3 h-100 overflow-auto">
+                <div class="canvas-container h-100 d-flex flex-column">
+                    <div class="canvas-toolbar bg-light p-3 mb-3 rounded">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div class="d-flex gap-2 flex-wrap">
+                                <span class="badge bg-secondary">
+                                    <i class="fas fa-file me-1"></i>Letter (8.5" × 11")
+                                </span>
+                                <span class="badge bg-info" id="fieldCount">
+                                    <i class="fas fa-layer-group me-1"></i>Fields: 0
+                                </span>
                             </div>
-                            <div>
+                            <div class="d-flex align-items-center gap-2">
                                 <button class="btn btn-sm btn-outline-secondary" onclick="zoomOut()">
                                     <i class="fas fa-search-minus"></i>
                                 </button>
-                                <span class="mx-2" id="zoomLevel">100%</span>
+                                <span class="mx-2 fw-bold" id="zoomLevel">100%</span>
                                 <button class="btn btn-sm btn-outline-secondary" onclick="zoomIn()">
                                     <i class="fas fa-search-plus"></i>
                                 </button>
@@ -137,33 +157,38 @@
                     </div>
 
                     <!-- Fabric.js Canvas -->
-                    <div class="canvas-wrapper">
+                    <div class="canvas-wrapper flex-grow-1">
                         <canvas id="designCanvas"></canvas>
                     </div>
 
-                    <div class="mt-2 text-muted small">
-                        <i class="fas fa-info-circle"></i> 
-                        Click "Add Fields" buttons to add elements, then drag and resize them on the canvas.
+                    <div class="mt-3 text-muted small text-center">
+                        <i class="fas fa-lightbulb me-1"></i> 
+                        Click the "Add Fields" buttons to add elements, then drag and resize them on the canvas.
                     </div>
                 </div>
             </div>
 
             <!-- Right Sidebar - Properties -->
-            <div class="col-md-2 bg-light p-3">
-                <h5><i class="fas fa-sliders-h"></i> Properties</h5>
+            <div class="col-md-2 bg-light p-3 border-start h-100 overflow-auto">
+                <h5 class="fw-bold mb-4">
+                    <i class="fas fa-sliders-h text-primary me-2"></i>Properties
+                </h5>
                 
                 <div id="propertiesPanel">
-                    <p class="text-muted small">Select a field to edit properties</p>
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-hand-pointer fa-3x mb-3 opacity-25"></i>
+                        <p class="small">Select a field to edit properties</p>
+                    </div>
                 </div>
 
                 <div id="fieldProperties" style="display: none;">
                     <div class="mb-3">
-                        <label class="form-label">Field Name</label>
+                        <label class="form-label fw-bold small">Field Name</label>
                         <input type="text" class="form-control form-control-sm" id="fieldName">
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Field Type</label>
+                        <label class="form-label fw-bold small">Field Type</label>
                         <select class="form-select form-select-sm" id="fieldType">
                             <option value="text">Text</option>
                             <option value="number">Number</option>
@@ -174,17 +199,17 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Label Text</label>
+                        <label class="form-label fw-bold small">Label Text</label>
                         <input type="text" class="form-control form-control-sm" id="fieldLabel">
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Font Size</label>
+                        <label class="form-label fw-bold small">Font Size</label>
                         <input type="number" class="form-control form-control-sm" id="fontSize" value="12" min="6" max="72">
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Font Weight</label>
+                        <label class="form-label fw-bold small">Font Weight</label>
                         <select class="form-select form-select-sm" id="fontWeight">
                             <option value="normal">Normal</option>
                             <option value="bold">Bold</option>
@@ -192,7 +217,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Position</label>
+                        <label class="form-label fw-bold small">Position</label>
                         <div class="row g-2">
                             <div class="col-6">
                                 <input type="number" class="form-control form-control-sm" id="posX" placeholder="X">
@@ -204,7 +229,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Size</label>
+                        <label class="form-label fw-bold small">Size</label>
                         <div class="row g-2">
                             <div class="col-6">
                                 <input type="number" class="form-control form-control-sm" id="width" placeholder="Width">
@@ -216,7 +241,7 @@
                     </div>
 
                     <button class="btn btn-sm btn-primary w-100" onclick="applyProperties()">
-                        <i class="fas fa-check"></i> Apply
+                        <i class="fas fa-check me-2"></i>Apply
                     </button>
                 </div>
             </div>

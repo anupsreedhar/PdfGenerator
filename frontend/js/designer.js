@@ -357,7 +357,9 @@ function updateFieldCount() {
 /**
  * Save template
  */
-function saveTemplate() {
+async function saveTemplate() {
+    console.log('🔵 saveTemplate() called');
+    
     const name = document.getElementById('templateName').value.trim();
     
     if (!name) {
@@ -367,6 +369,7 @@ function saveTemplate() {
     }
     
     const objects = canvas.getObjects();
+    console.log(`🔵 Found ${objects.length} objects on canvas`);
     
     if (objects.length === 0) {
         alert('Please add at least one field to the template');
@@ -401,22 +404,59 @@ function saveTemplate() {
     });
     
     const template = {
-        id: currentTemplate?.id,
+        id: currentTemplate?.id || name.toLowerCase().replace(/\s+/g, '_'),
         name: name,
         fields: fields,
         pageWidth: 612,
         pageHeight: 792
     };
     
-    // Save to localStorage
-    const saved = TemplateStorage.save(template);
-    currentTemplate = saved;
+    console.log('🔵 Template prepared:', template);
     
-    showNotification(`Template "${name}" saved successfully!`, 'success');
-    
-    // Update URL
-    if (!window.location.search.includes('id=')) {
-        window.history.pushState({}, '', `?id=${saved.id}`);
+    try {
+        console.log('🔵 Sending POST request to http://localhost:9000/api/templates/save');
+        
+        // Save to backend (data/templates folder)
+        const response = await fetch('http://localhost:9000/api/templates/save', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(template)
+        });
+        
+        console.log('🔵 Response received:', response.status, response.statusText);
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.message || 'Failed to save template to server');
+        }
+        
+        console.log('✅ Template saved to backend:', result);
+        
+        // Also save to localStorage for quick access
+        const saved = TemplateStorage.save(template);
+        currentTemplate = saved;
+        
+        showNotification(`Template "${name}" saved successfully to data/templates!`, 'success');
+        
+        // Update URL
+        if (!window.location.search.includes('id=')) {
+            window.history.pushState({}, '', `?id=${saved.id}`);
+        }
+        
+    } catch (error) {
+        console.error('❌ Error saving template:', error);
+        
+        // Fallback: save only to localStorage
+        const saved = TemplateStorage.save(template);
+        currentTemplate = saved;
+        
+        showNotification(
+            `Template saved to browser storage only. Server error: ${error.message}`,
+            'warning'
+        );
     }
 }
 

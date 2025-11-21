@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from fastapi import UploadFile, File
 from pydantic import BaseModel
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 import uvicorn
 import json
 import os
@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 # Import services
 from services.pdf_service import PDFService
 from services.ml_service import MLService
+from services.ml_recognition_service import MLRecognitionService
 from services.pdf_parser import PDFParser
 from services.pdf_to_html_converter import PDFToHTMLConverter
 # Lazy import for html_css_template_service to avoid slow startup
@@ -57,6 +58,8 @@ pdf_service = PDFService()
 logger.info("✅ PDF Service initialized")
 ml_service = MLService()
 logger.info("✅ ML Service initialized")
+ml_recognition_service = MLRecognitionService()
+logger.info("✅ ML Recognition Service initialized")
 pdf_parser = PDFParser(use_ai=False)  # Set to True to enable LayoutLMv3
 logger.info("✅ Basic PDF Parser initialized")
 pdf_to_html_converter = PDFToHTMLConverter()
@@ -157,6 +160,10 @@ class TrainingConfig(BaseModel):
 class TrainingRequest(BaseModel):
     templates: List[Template]
     config: Optional[TrainingConfig] = TrainingConfig()
+
+class SmartGenerateRequest(BaseModel):
+    template_name: str
+    data: Dict[str, Any]
 
 # ============================================================================
 # PDF Generation Endpoints
@@ -787,32 +794,384 @@ async def generate_pdf_from_html(request: GenerateFromHTMLRequest):
         logger.error("=" * 80)
         raise HTTPException(status_code=500, detail=str(e))
 
+# ============================================================================
+# ML Recognition Endpoints (Template Detection & Data Extraction)
+# ============================================================================
+ 
+@app.post("/api/ml/detect-template")
+async def detect_template(file: UploadFile = File(...)):
+    """
+    Detect which template a PDF matches using ML model
+   
+    Args:
+        file: PDF file to analyze
+   
+    Returns:
+        {
+            "success": true,
+            "template_id": "invoice_template",
+            "template_name": "Invoice Template",
+            "confidence": 0.95,
+            "all_scores": {...}
+        }
+    """
+    logger.info("=" * 80)
+    logger.info(f"📊 ML TEMPLATE DETECTION REQUEST")
+    logger.info(f"File: {file.filename}")
+    logger.info("=" * 80)
+   
+    # Save uploaded file temporarily
+    temp_path = f"backend/temp/detect_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}"
+    os.makedirs(os.path.dirname(temp_path), exist_ok=True)
+   
+    try:
+        # Save uploaded file
+        with open(temp_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+       
+        logger.info(f"📁 Saved temporary file: {temp_path}")
+       
+        # Detect template
+        result = ml_recognition_service.predict_template(temp_path)
+       
+        logger.info(f"✅ Template detected: {result.get('template_id', 'unknown')}")
+        logger.info(f"   Confidence: {result.get('confidence', 0):.2%}")
+       
+        return result
+       
+    except Exception as e:
+        logger.error(f"❌ Template detection error: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+   
+    finally:
+        # Clean up temp file
+        try:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+                logger.info(f"🧹 Cleaned up: {temp_path}")
+        except Exception as e:
+            logger.warning(f"⚠️ Could not delete temp file: {e}")
+
+@app.post("/api/ml/smart-generate")
+async def smart_generate_pdf(request: SmartGenerateRequest):
+    """
+    ML-Powered Smart PDF Generation
+   
+    Uses trained model to intelligently select and fill template by name.
+    The model learns all template structures during training and can
+    generate PDFs with minimal input.
+   
+    Args:
+        request: JSON body with template_name and data
+   
+    Returns:
+        PDF file as bytes
+       
+    Example:
+        POST /api/ml/smart-generate
+        {
+            "template_name": "invoice_template",
+            "data": {
+                "invoice_number": "INV-001",
+                "date": "2024-01-15",
+                "amount": "1500.00"
+            }
+        }
+    """
+    template_name = request.template_name
+    data = request.data
+   
+    logger.info("=" * 80)
+    logger.info(f"🤖 ML SMART GENERATE REQUEST")
+    logger.info(f"Template Name: {template_name}")
+    logger.info(f"Data Fields: {len(data)}")
+    logger.info("=" * 80)
+   
+    try:
+        # Load all templates from cache
+        templates = ml_recognition_service.templates_cache
+       
+        if not templates:
+            raise HTTPException(
+                status_code=404,
+                detail="No templates found. Please train the model first or create templates."
+            )
+       
+        # Find matching template by name (case-insensitive, flexible matching)
+        template_id = None
+        template_obj = None
+       
+        # Exact match first
+        for tid, tpl in templates.items():
+            if tid.lower() == template_name.lower() or tpl.get('name', '').lower() == template_name.lower():
+                template_id = tid
+                template_obj = tpl
+                break
+       
+        # Partial match if no exact match
+        if not template_id:
+            for tid, tpl in templates.items():
+                if template_name.lower() in tid.lower() or template_name.lower() in tpl.get('name', '').lower():
+                    template_id = tid
+                    template_obj = tpl
+                    logger.info(f"📌 Using partial match: {tid}")
+                    break
+       
+        if not template_obj:
+            available_templates = [f"{tid} ({tpl.get('name', 'unnamed')})" for tid, tpl in templates.items()]
+            raise HTTPException(
+                status_code=404,
+                detail=f"Template '{template_name}' not found. Available: {', '.join(available_templates)}"
+            )
+       
+        logger.info(f"✅ Found template: {template_id}")
+        logger.info(f"   Name: {template_obj.get('name', 'unnamed')}")
+        logger.info(f"   Fields: {len(template_obj.get('fields', []))}")
+       
+        # ML Enhancement: Auto-fill missing fields using model predictions
+        enhanced_data = data.copy()
+       
+        # Get template fields
+        template_fields = {field['name']: field for field in template_obj.get('fields', [])}
+       
+        # Check for missing fields and provide defaults
+        for field_name, field_info in template_fields.items():
+            if field_name not in enhanced_data:
+                # Provide intelligent defaults based on field type
+                field_type = field_info.get('type', 'text')
+               
+                if field_type == 'checkbox':
+                    enhanced_data[field_name] = False
+                elif field_type == 'date':
+                    enhanced_data[field_name] = datetime.now().strftime('%Y-%m-%d')
+                elif field_type == 'number':
+                    enhanced_data[field_name] = '0'
+                else:
+                    enhanced_data[field_name] = ''  # Empty for text fields
+               
+                logger.info(f"   Auto-filled: {field_name} = {enhanced_data[field_name]}")
+       
+        # Convert template dict to Template object (use the Pydantic model defined above)
+        template = Template(**template_obj)
+       
+        # Check if template has a stored PDF background
+        template_pdf_path = None
+        if hasattr(template, 'pdfFilePath') and template.pdfFilePath:
+            stored_pdf_path = os.path.join(os.path.dirname(__file__), '..', template.pdfFilePath)
+            if os.path.exists(stored_pdf_path):
+                template_pdf_path = stored_pdf_path
+                logger.info(f"📄 Using template background: {template_pdf_path}")
+       
+        # Generate PDF using PDFService
+        pdf_bytes = pdf_service.generate_pdf(template, enhanced_data, template_pdf_path)
+       
+        logger.info(f"✅ PDF generated successfully ({len(pdf_bytes)} bytes)")
+       
+        # Return as downloadable file
+        filename = f"{template.name.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+       
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+       
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Smart generate error: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+ 
+@app.get("/api/ml/templates")
+async def get_ml_templates():
+    """
+    Get all available templates from the trained model
+   
+    Returns list of templates that the model knows about.
+    These can be used with smart-generate endpoint.
+   
+    Returns:
+        {
+            "success": true,
+            "templates": [
+                {
+                    "id": "invoice_template",
+                    "name": "Invoice Template",
+                    "fields": [...],
+                    "field_count": 10
+                }
+            ]
+        }
+    """
+    try:
+        templates = ml_recognition_service.templates_cache
+       
+        if not templates:
+            return {
+                "success": False,
+                "message": "No templates found. Please train the model first.",
+                "templates": []
+            }
+       
+        template_list = []
+        for template_id, template_data in templates.items():
+            template_list.append({
+                "id": template_id,
+                "name": template_data.get('name', template_id),
+                "field_count": len(template_data.get('fields', [])),
+                "fields": [
+                    {
+                        "name": field['name'],
+                        "type": field.get('type', 'text'),
+                        "required": field.get('required', False)
+                    }
+                    for field in template_data.get('fields', [])
+                ],
+                "width": template_data.get('width'),
+                "height": template_data.get('height')
+            })
+       
+        logger.info(f"📋 Retrieved {len(template_list)} templates")
+       
+        return {
+            "success": True,
+            "templates": template_list,
+            "count": len(template_list)
+        }
+       
+    except Exception as e:
+        logger.error(f"❌ Get templates error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+ 
+@app.post("/api/templates/save") 
+async def save_template(template: Dict[str, Any]):
+    """
+    Save a template to the file system (from browser localStorage)
+    This makes the template available for ML training and detection
+   
+    Args:
+        template: Template JSON with id, name, fields, pageWidth, pageHeight
+   
+    Returns:
+        {
+            "success": true,
+            "message": "Template saved",
+            "file_path": "data/templates/template_name.json"
+        }
+    """
+    try:
+        logger.info("=" * 80)
+        logger.info(f"💾 SAVING TEMPLATE TO FILE SYSTEM")
+        logger.info(f"Template: {template.get('name')}")
+        logger.info("=" * 80)
+       
+        # Validate required fields
+        if not template.get('name'):
+            raise HTTPException(status_code=400, detail="Template name is required")
+       
+        if not template.get('fields') or len(template.get('fields', [])) == 0:
+            raise HTTPException(status_code=400, detail="Template must have at least one field")
+       
+        # Create templates directory if it doesn't exist
+        # Use absolute path: backend/../data/templates = AIPdfGenerator/data/templates
+        base_dir = os.path.dirname(__file__)
+        templates_dir = os.path.abspath(os.path.join(base_dir, '..', 'data', 'templates'))
+        os.makedirs(templates_dir, exist_ok=True)
+       
+        # Use the exact template name for filename (with .json extension)
+        template_name = template.get('name')
+       
+        # Use template name as-is for the filename
+        filename = f"{template_name}.json"
+        file_path = os.path.join(templates_dir, filename)
+       
+        # Set ID to match the name if not already set
+        if not template.get('id'):
+            template['id'] = template_name
+       
+        # Save template JSON
+        with open(file_path, 'w') as f:
+            json.dump(template, f, indent=2)
+       
+        logger.info(f"✅ Template saved to: {file_path}")
+        logger.info(f"   - ID: {template.get('id')}")
+        logger.info(f"   - Name: {template.get('name')}")
+        logger.info(f"   - Fields: {len(template.get('fields', []))}")
+       
+        # Reload ML service templates cache
+        if ml_recognition_service:
+            ml_recognition_service.load_templates()
+            logger.info(f"✅ Reloaded ML service templates cache")
+       
+        return {
+            'success': True,
+            'message': f"Template '{template.get('name')}' saved successfully",
+            'file_path': file_path,
+            'template_id': template.get('id')
+        }
+       
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error saving template: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/templates/list")
 async def list_templates():
     """
-    List all available templates (both PDF and HTML)
+    List all available templates (both JSON and HTML)
     
     Returns: List of templates with metadata
     """
     try:
-        templates = []
-        template_dir = "data/templates"
+        # Use hardcoded local templates directory
+        # Use absolute path: backend/../data/templates = AIPdfGenerator/data/templates
+        base_dir = os.path.dirname(__file__)
+        templates_dir = os.path.abspath(os.path.join(base_dir, '..', 'data', 'templates'))
         
-        if os.path.exists(template_dir):
-            for filename in os.listdir(template_dir):
-                if filename.endswith('_metadata.json'):
-                    with open(os.path.join(template_dir, filename), 'r') as f:
-                        template_data = json.load(f)
-                        templates.append(template_data)
+        templates = []
+        
+        if os.path.exists(templates_dir):
+            for filename in os.listdir(templates_dir):
+                # Load JSON templates
+                if filename.endswith('.json') and not filename.endswith('_metadata.json'):
+                    try:
+                        template_path = os.path.join(templates_dir, filename)
+                        with open(template_path, 'r', encoding='utf-8') as f:
+                            template_data = json.load(f)
+                            template_data['filename'] = filename
+                            template_data['source'] = 'json'
+                            templates.append(template_data)
+                    except Exception as e:
+                        logger.warning(f"Failed to load template {filename}: {e}")
+                
+                # Load HTML template metadata
+                elif filename.endswith('_metadata.json'):
+                    try:
+                        with open(os.path.join(templates_dir, filename), 'r') as f:
+                            template_data = json.load(f)
+                            template_data['source'] = 'html'
+                            templates.append(template_data)
+                    except Exception as e:
+                        logger.warning(f"Failed to load metadata {filename}: {e}")
+        
+        logger.info(f"📋 Found {len(templates)} templates in {templates_dir}")
         
         return {
             'success': True,
             'templates': templates,
-            'count': len(templates)
+            'count': len(templates),
+            'directory': templates_dir
         }
         
     except Exception as e:
+        logger.error(f"❌ Error listing templates: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # ============================================================================
