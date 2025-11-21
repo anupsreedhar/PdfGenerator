@@ -360,6 +360,30 @@ async function importWithAI() {
         // Save template to localStorage
         if (template.fields && template.fields.length > 0) {
             TemplateStorage.save(template);
+            console.log('✅ Template saved to localStorage:', template.name);
+            
+            // Also save template to backend (file system)
+            try {
+                const saveResponse = await fetch('http://localhost:9000/api/templates/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(template)  // ← FIX: Added missing body parameter
+                });
+                
+                const result = await saveResponse.json();
+                
+                if (saveResponse.ok && result.success) {
+                    console.log('✅ Template saved to backend:', result.file_path);
+                    logMessage(`✅ Template saved to: ${result.file_path}`);
+                } else {
+                    console.warn('⚠️ Failed to save template to backend:', result.message);
+                }
+            } catch (saveError) {
+                console.error('⚠️ Could not save template to backend:', saveError);
+                // Don't fail the import if backend save fails - localStorage save is still successful
+            }
             
             // Show results
             setTimeout(() => {
@@ -434,7 +458,7 @@ function displayAIResults(template) {
     }
     
     // Show success notification
-    showNotification(`Successfully imported ${numFields} field${numFields !== 1 ? 's' : ''}!`, 'success');
+    showNotification(`Successfully imported and saved ${numFields} field${numFields !== 1 ? 's' : ''} to data/templates!`, 'success');
 }
 
 /**
@@ -474,7 +498,50 @@ function resetAIImport() {
 
 /**
  * Go to generate page
+ * Ensures template is saved before navigation
  */
-function goToGenerate() {
-    window.location.href = 'generate.html';
+async function goToGenerate() {
+    // Get the most recently imported template
+    const templates = TemplateStorage.getAll();
+    if (templates.length === 0) {
+        alert('No templates found. Please import a PDF first.');
+        return;
+    }
+    
+    // Get the most recent template (last one in array)
+    const latestTemplate = templates[templates.length - 1];
+    
+    try {
+        // Ensure template is saved to backend before navigating
+        const saveResponse = await axios.post('http://localhost:9000/api/templates/save', latestTemplate, {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (saveResponse.data.success) {
+            console.log('✅ Template confirmed saved to backend:', saveResponse.data.file_path);
+            showNotification('Template saved! Redirecting to generate page...', 'success');
+            
+            // Navigate after a brief delay to show the notification
+            setTimeout(() => {
+                window.location.href = 'generate.html';
+            }, 800);
+        } else {
+            throw new Error(saveResponse.data.message || 'Failed to save template');
+        }
+    } catch (error) {
+        console.error('❌ Error saving template:', error);
+        
+        // Ask user if they want to continue anyway
+        const continueAnyway = confirm(
+            'Warning: Could not save template to server.\n\n' +
+            'The template is saved in your browser, but may not be available for ML training.\n\n' +
+            'Continue to generate page anyway?'
+        );
+        
+        if (continueAnyway) {
+            window.location.href = 'generate.html';
+        }
+    }
 }
