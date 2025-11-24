@@ -121,8 +121,8 @@ async function startTraining() {
         if (taskId) {
             await pollTrainingProgress(taskId);
         } else {
-            // Training completed immediately
-            handleTrainingComplete(response.data);
+            // Training completed immediately - extract result from response
+            handleTrainingComplete(response.data.result);
         }
         
     } catch (error) {
@@ -165,6 +165,12 @@ async function pollTrainingProgress(taskId) {
  * Handle training completion
  */
 function handleTrainingComplete(result) {
+    console.log('🔍 Training result received:', result);
+    console.log('🔍 Result keys:', Object.keys(result));
+    console.log('🔍 Accuracy:', result.accuracy);
+    console.log('🔍 Epochs:', result.epochs);
+    console.log('🔍 Training time:', result.training_time);
+    
     logMessage('');
     logMessage('✅ Training completed successfully!');
     logMessage(`📈 Final Accuracy: ${result.accuracy || 'N/A'}`);

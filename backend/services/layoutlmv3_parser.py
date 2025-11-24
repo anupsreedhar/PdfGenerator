@@ -122,16 +122,20 @@ class LayoutLMv3Parser:
             print("\nFalling back to basic parsing...")
             raise
     
-    def parse_pdf(self, pdf_path: str) -> Dict:
+    def parse_pdf(self, pdf_path: str, filename: str = None) -> Dict:
         """
         Parse PDF using LayoutLMv3 for intelligent field detection
         
         Args:
             pdf_path: Path to PDF file
+            filename: Template name to use (optional, defaults to "Imported PDF Template")
             
         Returns:
             dict: Template JSON with detected fields
         """
+        # Use provided filename or default
+        template_name = filename if filename else "Imported PDF Template (LayoutLMv3)"
+        
         try:
             # Convert PDF to image
             images = convert_from_path(pdf_path, first_page=1, last_page=1, dpi=200)
@@ -146,14 +150,14 @@ class LayoutLMv3Parser:
                 self._load_model()
             except Exception as e:
                 # Fall back to basic OCR if model fails
-                return self._fallback_parse(image, page_width, page_height)
+                return self._fallback_parse(image, page_width, page_height, template_name=template_name)
             
             # Analyze document with LayoutLMv3
             fields = self._analyze_layout(image, page_width, page_height)
             
             # Build template
             template = {
-                "name": "Imported PDF Template (LayoutLMv3)",
+                "name": template_name,
                 "fields": fields,
                 "pageWidth": page_width,
                 "pageHeight": page_height,
@@ -286,7 +290,7 @@ class LayoutLMv3Parser:
         else:
             return "text"
     
-    def _fallback_parse(self, image: Image, page_width: int, page_height: int) -> Dict:
+    def _fallback_parse(self, image: Image, page_width: int, page_height: int, template_name: str = None) -> Dict:
         """
         Fallback to basic OCR if LayoutLMv3 fails
         
@@ -294,12 +298,14 @@ class LayoutLMv3Parser:
             image: PDF page image
             page_width: Page width
             page_height: Page height
+            template_name: Template name to use
             
         Returns:
             dict: Basic template
         """
+        name = template_name if template_name else "Imported PDF Template"
         return {
-            "name": "Imported PDF Template",
+            "name": name,
             "fields": [],
             "pageWidth": page_width,
             "pageHeight": page_height,

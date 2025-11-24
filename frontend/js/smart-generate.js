@@ -82,7 +82,7 @@ function displayTemplates(templates) {
                         ${template.field_count} fields
                     </p>
                     <p class="text-muted small mb-0">
-                        ${template.width} × ${template.height}
+                        
                     </p>
                 </div>
             </div>

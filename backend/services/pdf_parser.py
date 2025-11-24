@@ -48,7 +48,7 @@ class PDFParser:
                 print("   Falling back to basic parsing...")
                 self.use_ai = False
     
-    def parse_pdf_form(self, pdf_file_path: str, use_ai: bool = None) -> Dict:
+    def parse_pdf_form(self, pdf_file_path: str, use_ai: bool = None, filename: str = None) -> Dict:
         """
         Parse PDF and convert to template JSON format
         
@@ -60,6 +60,7 @@ class PDFParser:
         Args:
             pdf_file_path: Path to PDF file or file bytes
             use_ai: Override instance setting for AI parsing
+            filename: Original filename to use as template name (optional)
             
         Returns:
             dict: Template JSON compatible with the designer
@@ -67,11 +68,17 @@ class PDFParser:
         # Determine if we should use AI
         should_use_ai = use_ai if use_ai is not None else self.use_ai
         
+        # Extract template name from filename if provided
+        template_name = "Imported PDF Template"
+        if filename:
+            # Remove .pdf extension and use as template name
+            template_name = filename.replace('.pdf', '').replace('.PDF', '')
+        
         # Try AI parsing first if enabled
         if should_use_ai and self.ai_parser:
             try:
                 print("🤖 Using LayoutLMv3 AI parser...")
-                result = self.ai_parser.parse_pdf(pdf_file_path)
+                result = self.ai_parser.parse_pdf(pdf_file_path, filename=template_name)
                 if result and "error" not in result:
                     return result
                 print("⚠️ AI parsing failed, falling back to traditional methods")
@@ -93,10 +100,10 @@ class PDFParser:
             
             if has_form_fields or (hasattr(first_page, '__contains__') and '/Annots' in first_page):
                 # PDF has form fields - parse them
-                return self._parse_form_fields(reader, page_width, page_height)
+                return self._parse_form_fields(reader, page_width, page_height, template_name=template_name)
             else:
                 # Regular PDF template - extract text and create base template
-                return self._parse_text_content(reader, page_width, page_height, pdf_file_path)
+                return self._parse_text_content(reader, page_width, page_height, pdf_file_path, template_name=template_name)
         
         except Exception as e:
             return {
@@ -104,13 +111,22 @@ class PDFParser:
                 "message": str(e)
             }
     
-    def _parse_text_content(self, reader: PdfReader, page_width: float, page_height: float, pdf_file_path: str) -> Dict:
+    def _parse_text_content(self, reader: PdfReader, page_width: float, page_height: float, pdf_file_path: str, template_name: str = None) -> Dict:
         """
         Parse regular PDF template (without form fields)
         
         For static templates (no form fields), we return minimal field detection
         and let the user manually add fields in the designer.
+        
+        Args:
+            reader: PDF reader instance
+            page_width: Page width
+            page_height: Page height
+            pdf_file_path: Path to PDF file
+            template_name: Template name to use (optional)
         """
+        name = template_name if template_name else "Imported PDF Template"
+        
         try:
             first_page = reader.pages[0]
             
@@ -247,7 +263,7 @@ class PDFParser:
             # If no fields found, create a message
             if not fields:
                 return {
-                    "name": "Imported PDF Template",
+                    "name": name,
                     "fields": [],
                     "pageWidth": round(page_width),
                     "pageHeight": round(page_height),
@@ -257,7 +273,7 @@ class PDFParser:
                 }
             
             return {
-                "name": "Imported PDF Template",
+                "name": name,
                 "fields": fields,
                 "pageWidth": round(page_width),
                 "pageHeight": round(page_height),
@@ -271,10 +287,18 @@ class PDFParser:
                 "message": str(e)
             }
     
-    def _parse_form_fields(self, reader: PdfReader, page_width: float, page_height: float) -> Dict:
+    def _parse_form_fields(self, reader: PdfReader, page_width: float, page_height: float, template_name: str = None) -> Dict:
         """
         Parse PDF with form fields (Adobe Acrobat forms)
+        
+        Args:
+            reader: PDF reader instance
+            page_width: Page width
+            page_height: Page height
+            template_name: Template name to use (optional)
         """
+        name = template_name if template_name else "Imported PDF Template"
+        
         try:
             # Get form fields
             form_fields = reader.get_form_text_fields() or {}
@@ -368,7 +392,7 @@ class PDFParser:
                     y_pos += 40
             
             template = {
-                "name": "Imported PDF Template",
+                "name": name,
                 "description": f"Imported from PDF with {len(fields)} fields",
                 "fields": fields,
                 "pageWidth": round(page_width),

@@ -448,7 +448,7 @@ async def import_pdf_template(file: UploadFile = File(...)):
             f.write(content)
         
         # Parse PDF form fields
-        template = pdf_parser.parse_pdf_form(temp_path)
+        template = pdf_parser.parse_pdf_form(temp_path, filename=file.filename)
         
         # Check for errors
         if "error" in template:
@@ -530,7 +530,7 @@ async def import_pdf_template_ai(file: UploadFile = File(...)):
             f.write(content)
         
         # Parse with AI
-        template = pdf_parser_ai.parse_pdf_form(temp_path, use_ai=True)
+        template = pdf_parser_ai.parse_pdf_form(temp_path, use_ai=True, filename=file.filename)
         
         # Check for errors
         if "error" in template:
@@ -1032,8 +1032,8 @@ async def get_ml_templates():
                     }
                     for field in template_data.get('fields', [])
                 ],
-                "width": template_data.get('width'),
-                "height": template_data.get('height')
+                # "width": template_data.get('width'),
+                # "height": template_data.get('height')
             })
        
         logger.info(f"📋 Retrieved {len(template_list)} templates")
@@ -1090,9 +1090,21 @@ async def save_template(template: Dict[str, Any]):
         filename = f"{template_name}.json"
         file_path = os.path.join(templates_dir, filename)
        
+        if os.path.exists(file_path):
+            counter = 1
+            while True:
+                filename = f"{template_name}-{counter}.json"
+                file_path = os.path.join(templates_dir, filename)
+                if not os.path.exists(file_path):
+                    # Update template name to include suffix
+                    template['name'] = f"{template_name}-{counter}"
+                    logger.info(f"   Duplicate name detected, renamed to: {template['name']}")
+                    break
+                counter += 1
+ 
         # Set ID to match the name if not already set
         if not template.get('id'):
-            template['id'] = template_name
+            template['id'] = template['name'].replace(' ', '_').lower()
        
         # Save template JSON
         with open(file_path, 'w') as f:
@@ -1114,7 +1126,7 @@ async def save_template(template: Dict[str, Any]):
             'file_path': file_path,
             'template_id': template.get('id')
         }
-       
+    
     except HTTPException:
         raise
     except Exception as e:
